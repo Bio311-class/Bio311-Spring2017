@@ -1,0 +1,525 @@
+---
+title: "A Little R: A Socratic Approach"
+author: "Paul M. Magwene"
+date: "07 February 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, results = "hide", warning = FALSE,
+                      fig.show = "hide")
+```
+
+# <font color='red'> IMPORTANT-- Read this now! </font>
+
+In this and many future documents to be posted on the course website you'll encounter blocks of R code.  Your natural intuition will be to cut and paste commands or code blocks into the R interpretter to save yourself the typing.  **DO NOT DO THIS!!** 
+
+Part of learning any new skill is making mistakes, figuring out where you went wrong, and correcting those mistakes.  If you cut and paste the examples into the R interpretter the code will run, but you won't learn anything.  Instead, you should type in all examples by hand, thinking about what the code means as you do so.  You'll inevitably make erorrs, generate syntax errors, etc.  In the process of fixing those errors, you'll learn more about how R works, and how to avoid such errors, or correct bugs in your own code in the future.
+
+
+## Introduction 
+
+The gray boxes that follow are "code blocks".  You should enter such code blocks in the R console to answer the questions.
+
+## Calculator
+
+What is?
+
+```{r}
+2 + 3
+```
+
+```{r}
+2 * 3
+```
+
+```{r}
+2 / 5
+```
+
+```{r}
+2 - 3
+```
+
+
+Why do the following two statements give different results?
+
+```{r}
+2 + 4 * 5
+```
+
+```{r}
+(2 + 4) * 5
+```
+
+What does the `^` operator do?
+```{r}
+2^3
+```
+
+What does the `**` operator do?
+
+```{r}
+2**3
+```
+
+What does the `sqrt` function do?
+
+```{r}
+sqrt(25)
+```
+
+What does this statement do?
+
+```{r}
+help(sqrt)
+```
+
+What does this statement do?
+```{r}
+?sqrt
+```
+
+
+What is?
+```{r}
+sqrt(-1)
+```
+
+```{r}
+sqrt(-1 + 0i)
+```
+
+What is the difference between `1` and `-1 + 0i`?
+
+```{r}
+typeof(1)
+```
+
+```{r}
+typeof(-1 + 0i)
+```
+
+
+What is the value of `pi`?
+
+```{r}
+pi
+```
+
+What do `sin`, `cos`, `tan`, etc. do?
+```{r}
+sin(pi/2)
+```
+
+```{r}
+cos(pi/2)
+```
+
+```{r}
+tan(pi/2)
+```
+
+```{r}
+sin(pi/2) + cos(pi/2)
+```
+
+```{r}
+exp(1)
+```
+
+
+## Logical values
+
+What is?
+
+```{r}
+TRUE
+```
+
+```{r}
+FALSE
+```
+
+```{r}
+1 == 1.0
+```
+
+```{r}
+1 == -1
+```
+
+```{r}
+5 != -5
+```
+
+```{r}
+1 < 2
+```
+
+```{r}
+1 > 2
+```
+
+```{r}
+2 <= 2
+```
+
+```{r}
+5 >= 10
+```
+
+Does this give the result you expect? If not, why not?
+
+```{r}
+cos(pi/2) == 0
+```
+
+How about this statement?
+
+```{r}
+cos(pi/2) + sin(pi/2)  == 1
+```
+
+## Variables
+
+What do these statements do?
+
+```{r}
+x <- 4
+x
+```
+
+How about this? 
+```{r}
+y <- 8
+```
+
+How about this? 
+```{r}
+x + y
+```
+
+## Strings
+
+What is?
+
+```{r}
+s1 <- "Hello"
+typeof(s1)
+```
+
+What does the `paste` function do?
+```{r}
+s2 <- "World"
+s3 <- paste(s1, s2)
+s3
+```
+
+What does the `substr` function do?
+
+```{r}
+substr(s3, 1, 3)
+```
+
+```{r}
+substr(s3, 4, 8)
+```
+
+## Vectors
+
+What does the `c` function do?
+
+```{r}
+c(2, 4, 6, 8)
+```
+
+What does this statement do?
+```{r}
+z <- c(2, 4, 6, 8)
+z
+```
+
+What does the `length` function do?
+
+```{r}
+length(z)
+```
+
+What do the square brackets do?
+```{r}
+z[1]
+```
+
+```{r}
+z[3]
+```
+
+The application of the square brackets above is called "indexing".
+
+
+
+What does the `:` (colon) operator do?
+
+```{r}
+1:10
+```
+
+```{r}
+5:8
+```
+
+What happens when you combine square brackets and the `:` (colon) operator?
+```{r}
+z[1:3]
+```
+
+```{r}
+z[2:4]
+```
+
+What does the `seq` function do?
+
+```{r}
+seq(1, 10)
+```
+
+```{r}
+seq(1, 10, by=3)
+```
+
+What does this statement do?
+```{r}
+q <- seq(1, 20, by=2)
+q[z]
+```
+
+
+What is the value of these statements?
+
+```{r}
+a <- 1:10
+b <- 11:20
+```
+
+```{r}
+a + b
+```
+
+```{r}
+a * b
+```
+
+```{r}
+a / b
+```
+
+```{r}
+sqrt(a)
+```
+
+```{r}
+3 * a
+```
+
+
+## Reading data from a file
+
+Upload the file named "spellman-alpha-factor-10genes.csv" to your Docker container.
+
+What is a CSV file?
+
+What does the `read.csv` function do?
+```{r}
+alpha <- read.csv("spellman-alpha-factor-10genes.csv")
+alpha
+```
+
+`alpha` is a "Data Frame".
+
+## Working with Data Frames
+
+What does the `head` function do?
+
+```{r}
+head(alpha)
+```
+
+```{r}
+head(alpha, n = 3)
+```
+
+What does the `tail` function do?
+
+```{r}
+tail(alpha)
+```
+
+What does the `dim` function do?
+
+```{r}
+dim(alpha)
+```
+
+What does the `names` function do?
+
+```{r}
+names(alpha)
+```
+
+## Indexing Data Frames
+
+What happens when you index a data frame?
+
+```{r}
+alpha[1]
+```
+
+```{r}
+alpha[3]
+```
+
+What happens when you index a data frame with a string?
+```{r}
+alpha["time"] 
+```
+
+```{r}
+alpha["YAL022C"]
+```
+
+What does indexing a data frame with a sequence do?
+
+```{r}
+alpha[1:4]
+```
+
+```{r}
+alpha[5:9]  
+```
+
+What do you get when you add a comma after the index?
+
+```{r}
+alpha[1,]
+```
+
+```{r}
+alpha[2:5,]
+```
+
+What do you get when you index with two sequences?
+?
+```{r}
+alpha[1:3, 1:5] 
+```
+
+```{r}
+alpha[1:3, 4:5]
+```
+
+Wnat is?
+
+```{r}
+alpha$time
+```
+
+```{r}
+alpha$YAL022C
+```
+
+
+## Functions applied to vectors and data frames
+
+What is?
+
+```{r}
+sum(alpha[3])
+```
+
+```{r}
+sum(alpha$YAL040C)
+```
+
+What does the `mean` function do?
+```{r}
+mean(alpha$YAL022C)
+```
+
+What does the `sd` function do?
+```{r}
+sd(alpha$YAL022C)
+```
+
+What happens when you apply the `sum` function to multiple columns?
+```{r}
+sum(alpha[3:4])
+```
+
+Why doesn't this work?
+```{r, eval=FALSE}
+sum(alpha[1])
+```
+
+## Plots
+
+There are several options for plotting in R. We'll start with the built-in plotting functions.
+
+What kind of plot is this?
+
+```{r}
+plot(alpha$time, alpha$YAL022C)
+```
+
+What kind of plot is this?
+
+```{r}
+plot(alpha$time, alpha$YAL022C, 
+     type = "l", lwd = 2,
+     xlab="time (mins)", ylab="Expression")
+```
+
+What does this plot show?
+
+```{r}
+matplot(alpha$time, alpha[c("YAL022C", "YAL040C")],
+        type = "l", lwd = 2,
+        xlab="time (mins)", ylab="Expression")
+```
+
+And this plot?
+
+```{r}
+matplot(alpha$time, alpha[c("YAL022C", "YAL040C", "YAL053W")],
+        type = "l", lwd = 2,
+        xlab="time (mins)", ylab="Expression")
+
+legend("bottomright", c("YAL022C", "YAL040C", "YAL053W"),
+       col=1:3, lty=1:3)
+```
+
+
+What does this show?
+
+```{r}
+plot(alpha$YAL022C, alpha$YAL040C, 
+     asp = 1,
+     xlab = "YAL022C", ylab = "YAL040C")
+```
+
+What does this show?
+
+```{r}
+plot(alpha$YAL022C, alpha$YAL053W, 
+     asp = 1,
+     xlab = "YAL022C", ylab = "YAL053W")
+```
+
+What does the `cor` function do?
+```{r}
+cor(alpha$YAL022C, alpha$YAL040C)
+```
+
+```{r}
+cor(alpha$YAL022C, alpha$YAL053W)
+```
