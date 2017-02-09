@@ -1,0 +1,278 @@
+---
+title: "Working with data frames"
+author: "Paul M. Magwene"
+date: "February 9, 2017"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    theme: readable
+    highlight: default  
+    fig_width: 5
+    fig_height: 3    
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, prompt = TRUE, eval = TRUE, 
+                      comment=NA, warning = FALSE, results="show",
+                      message = FALSE)
+```
+
+
+# Introduction
+
+Along with vectors and lists, data frames are one of the core data structures
+when working in R.  A data frame is essentially a list which represents a data
+table, where each column in the table has the same number of rows. Also unlike standard lists, the objects (columns) in a data frame must have names.
+
+# Creating a data frame in the console
+
+You'll most often create data frames by read data from a file, but it's useful to know how to create a data frame from scratch.  Here's a simple example where we create three vectors and then use the `data.frame` constructor function the create a data frame with those vectors as columns.
+
+```{r, eval=TRUE}
+age <- as.integer(rnorm(10, mean = 30, sd = 5))
+sex <- rep(c("M","F"), 5)
+wt <- rnorm(10, mean=50, sd = 8)
+df <- data.frame(age = age, sex=sex, weight=wt)
+df  # examine the data frame
+```
+
+# Indexing and accessing data frames
+
+Once you have a data frame object, you can access the elements in the data frame by either row, column, or both. Here are some examples
+
+```{r}
+df$age       # get the age column
+df[c("age", "weight")] # get the age and weight columns
+df[1:2,]     # get the first two rows
+df[1:3, 1:2] # get the first three rows and first three columns
+```
+
+
+# Reading files as data frames
+
+Most functions for reading data from files, such as `read.csv` and `read.table` typically return the data they read as data frames. We previously examined the `read.csv` function which parses "Comma Separated Value" format. The `read.delim` function does the same for tab or space delimited files. The package [readxl](https://github.com/tidyverse/readxl) which is part of Hadley Wicham's ["tidyverse" of R packages](http://readr.tidyverse.org) provides functionality for reading Excel formatted spreadsheets.  
+
+For now, we'll stick to CSV files:
+```{r}
+spellman <- read.csv("spellman-reformated.csv")
+```
+
+It's also worth noting that `read.csv` and related functions will also read a file from a URL, like so:
+
+```{r}
+alpha.small <- read.csv("https://github.com/Bio311-class/Bio311-Spring2017/raw/master/data/spellman-alpha-factor-10genes.csv")
+```
+
+
+# Useful functions for data frames
+
+Here's a list of some useful functions for working with data frames
+
+  * `dim` -- gives the dimensions of the table the data frame represents
+  * `nrow`, `ncol` -- number of rows and columns respectively
+  * `head` and `tail` -- show first / last few elements of data frame
+  * `summary` -- provides simple statistical summaries of columns of data frame
+
+
+```{r}
+dim(spellman)
+head(spellman[1:5])
+summary(spellman[1:5])
+```
+
+# Using the `dplyr` library to manipulate data frames
+
+The `dplyr` pckage provides some powerful and convenient functions for working  with data frames. The  `dplyr` library is installed by default on the Duke VM-Manage containers, but if you want to install it on your own laptop see the document 
+[Working with Packages in R](https://bio204-class.github.io/Bio204-Fall-2016/installing-packages.html).
+
+```{r}
+library(dplyr)  # load the package
+```
+
+The primary functions in the `dplyr` package can be thought of as a set of "verbs", each verb corresponding to a common data manipulation task.  Some of the most frequently used verbs/functions in `dplyr` include:
+  
+  * `select` -- select columns
+  * `filter` -- filter rows
+  * `arrange`-- reorder rows
+  * `mutate` -- create new columns
+  * `summarise` -- summarize values
+  * `group_by` -- split data frame on some grouping variable. Can be powerfully combined with `summarise`.
+
+## Selecting columns
+
+`select` is convenient for pulling out select columns to work with. The first argument to `select` is the data frame and th subsequent arguments give the names of the columns you want to retrieve.
+
+```{r}
+some.columns <- select(spellman, expt, time, YAL022C, YAL053W, YAR003W)
+head(some.columns)
+```
+
+Columns can be specified by number as well:
+
+```{r}
+other.columns <- select(spellman, 2, 4, 6, 8, 99)
+```
+
+There are a number of special functions that work with `select`.  For example, the `contains` function is useful for getting columns whose names include a string of interest.
+
+```{r}
+# Genes that begin with "YA" are on the first chromosome in yeast
+chrom1.genes <- select(spellman, expt, time, contains("YA"))
+head(chrom1.genes)
+```
+
+Read the documentation for `select_helpers` to see other `select` related special functions.
+
+
+
+## Filtering rows
+
+`filter` can be used to filter the rows of a data frame by one or more criteria of interest. For example, to retrieve only those rows of the Spellman data frame that represent the alpha-factor experiment you can do:
+
+```{r}
+alpha <- filter(spellman, expt == "alpha")
+dim(alpha)
+```
+
+If I wanted all the data, *except* the alpha factor experiment, I would do:
+
+```{r}
+not.alpha <- filter(spellman, expt != "alpha")
+dim(not.alpha)
+```
+
+You can chain together logical statements, for example here's how to get all the rows corresponding to the cdc15 or cdc28 experiments (`|` is the OR operator).
+
+```{r}
+cdc <- filter(spellman, expt == "cdc15" | expt == "cdc28")
+dim(cdc)
+```
+
+The AND operator (`&`) can also be put to good use with filter:
+
+```{r}
+# get all the rows from the alpha factor experiments at 45 minutes or later
+late.alpha <- filter(spellman, expt == "alpha" & time > 45)
+```
+
+
+## Reorder rows
+
+`arrange` allows you to reorder rows by one or more criteria.
+
+For example, if you wanted to get back a representation of the data frame with rows arranged by time you could do this:
+```{r}
+time.sorted <- arrange(spellman, time)
+head(time.sorted[1:5])
+```
+
+If instead I wanted times in descending order, I could combine `arrange` and `desc` (descend):
+
+```{r}
+rev.time.sorted <- arrange(spellman, desc(time))
+head(rev.time.sorted[1:5])
+```
+
+## Mutate
+
+The `mutate` function is convenient for creating a derived data frame, with new columns.  Say for example, you were working with the `some.columns` data frame we created above (see the section on select) and you wanted to add the absolute values of YAL022C as a new column:
+
+```{r}
+# create new DF, same as input but with additional columns
+# mutate doesn't modify the original data frame 
+some.columns.abs <- mutate(some.columns,  abs_YAL022C = abs(YAL022C))
+```
+
+## Summarizing
+
+`summarise` (note British spelling) creates a new data frame, apply the data transformations you specify to the columns of an existing data frame.
+
+```{r}
+summarise(spellman, 
+          mean.YAL022C = mean(YAL022C, na.rm = TRUE),
+          sd.YAL022C = sd(YAL022C, na.rm = TRUE))
+```
+
+## Group-by
+
+`group_by` provides a powerful mechanism for collapsing a table over a factor (categorical variable) of interest.  For example, if we were interested in the mean and standard deviation of YAL022C, broken down by group we could do the following:
+```{r}
+by_expt <- group_by(spellman, expt)
+summarise(by_expt, 
+          mean.YAL022C = mean(YAL022C, na.rm = TRUE),
+          sd.YAL022C = sd(YAL022C, na.rm = TRUE))          
+```
+
+When we use the `group_by` function, we get back a `tibble`, which you can think of as a light-weight data frame.  If you want to cast it back to a data frame you can use the `as.data.frame` function as so:
+
+```{r}
+summary_by_expt <- summarise(by_expt, 
+                             mean.YAL022C = mean(YAL022C, na.rm = TRUE),
+                             sd.YAL022C = sd(YAL022C, na.rm = TRUE))      
+
+as.data.frame(summary_by_expt)
+```
+
+
+# Chaining dplyr functions using pipes
+
+The `dplyr` library makes a very useful operator available called a pipe available to us (pipes actually come from another packaged called `magrittr`). 
+
+Pipes are powerful because they allow us to chain together sets of operations in a very intuitive fashion while minimizing nested function calls.  We can think of pipes as taking the output of one function and feeding it as the first argument to another function call, where we've already specified the subsequent arguments. The pipe operator is designated by `%>%`.  
+
+```{r}
+spellman %>% 
+  mutate(abs_YAL022C = abs(YAL022C)) %>%
+  group_by(expt) %>% 
+  summarise(avg_abs_YAL022C = mean(abs_YAL022C, na.rm = TRUE), 
+            min_abs_YAL022C = min(abs_YAL022C, na.rm = TRUE)) %>%
+  as.data.frame()
+```
+
+In the example above, we feed the data frame into the `mutate` function. `mutate` expects a data frame as a first argument, and subsequent arguments that specify the new variables to be created.   `spellman %>% mutate(abs_YAL022C = abs(YAL022C))` is thus equivalent to `mutate(spellman, abs_YAL022C = abs(YAL022C))`.  We then pipe the output to `group_by`, grouping the data by experiment, and finally we pass the data to `summarise`.  
+
+
+# Reshaping data with tidyr
+
+The `tidyr` library provides functions for reshaping or tidying data frames.  `tidyr` defines to main functions, `gather` and `spread`.  Quoting from the [tidyr website](http://tidyr.tidyverse.org):
+
+ * `gather` -- takes multiple columns, and gathers them into key-value pairs: it makes "wide" data longer.
+
+ * `spread` -- takes two columns (key & value) and spreads in to multiple columns, it makes "long" data wider.
+ 
+I'll illustrate uses of `gather` and `spread` below.
+
+First, let's load `tidyr` (installed by default on VM-Manage, install it yourself if working locally on your machine):
+
+```{r}
+library(tidyr)
+```
+
+## Wide to long conversions
+
+The Spellman data, as I provided it to you, is in what we would call "wide" format.  Each of the genes of interest is it's own column, and the different cells in each column represent the expression of that gene at a given time point.  
+
+Another way we might think about organizing this data is to recognize that each column of gene specific data represents the same abstract property of interest -- namely "expression" (i.e. a measure of [relative] mRNA levels).  "gene" might also be considered a categorial variable of interest.  In this rearranged format we'll have one column indicating gene names and column representing expression (we'll leave the "expt" and "time" columns alone).  This is somewhat abstract, so let's go ahead and use `gather` to generate the data in this long form
+
+```{r}
+# we give the names of the new columns to create -- gene and expression
+# -expt and -time tell gather NOT to change those columns
+spellman.long <- gather(spellman, gene, expression, -expt, -time)
+dim(spellman.long)
+dim(spellman)  # for comparison
+head(spellman.long, n = 20)
+```
+
+As you see, we've gone from a data frame with 73 rows and 726 columns (wide format), to a new data frame with 52,852 rows and 4 columns (long format). 
+
+Why might this long format be useful?  One reason is that it allows particularly powerful operations with `group_by`.  For example, here's a way to prepare a table giving the variance of every gene in the data set, using this long data frame.
+
+```{r}
+spellman.var <- spellman.long %>%
+  group_by(gene, expt) %>% 
+  summarise(var_expression = var(expression, na.rm = TRUE))
+
+head(spellman.var, n = 15)
+```
+
