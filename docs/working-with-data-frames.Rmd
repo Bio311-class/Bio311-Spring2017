@@ -53,7 +53,7 @@ df[1:3, 1:2] # get the first three rows and first three columns
 
 Most functions for reading data from files, such as `read.csv` and `read.table` typically return the data they read as data frames. We previously examined the `read.csv` function which parses "Comma Separated Value" format. The `read.delim` function does the same for tab or space delimited files. The package [readxl](https://github.com/tidyverse/readxl) which is part of Hadley Wicham's ["tidyverse" of R packages](http://readr.tidyverse.org) provides functionality for reading Excel formatted spreadsheets.  
 
-For now, we'll stick to CSV files:
+For now, we'll stick to CSV files. Download the "spellman-reformated.csv" file from the course wiki and then upload it to your RStudio docker container.  Once you've done so, you can read the file as so:
 ```{r}
 spellman <- read.csv("spellman-reformated.csv")
 ```

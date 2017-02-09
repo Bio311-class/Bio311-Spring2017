@@ -157,48 +157,48 @@ $(document).ready(function () {
 &gt; df &lt;- data.frame(age = age, sex=sex, weight=wt)
 &gt; df  # examine the data frame</code></pre>
 <pre><code>   age sex   weight
-1   34   M 48.42770
-2   32   F 48.40055
-3   24   M 59.94402
-4   25   F 53.12618
-5   21   M 53.03622
-6   30   F 53.20338
-7   32   M 45.89562
-8   25   F 45.31617
-9   25   M 35.59620
-10  33   F 58.56217</code></pre>
+1   27   M 54.31439
+2   29   F 52.41795
+3   29   M 47.84825
+4   27   F 44.26917
+5   23   M 50.67733
+6   22   F 41.60120
+7   38   M 56.18621
+8   25   F 44.87601
+9   23   M 53.64796
+10  34   F 53.94400</code></pre>
 </div>
 <div id="indexing-and-accessing-data-frames" class="section level1">
 <h1>Indexing and accessing data frames</h1>
 <p>Once you have a data frame object, you can access the elements in the data frame by either row, column, or both. Here are some examples</p>
 <pre class="r"><code>&gt; df$age       # get the age column</code></pre>
-<pre><code> [1] 34 32 24 25 21 30 32 25 25 33</code></pre>
+<pre><code> [1] 27 29 29 27 23 22 38 25 23 34</code></pre>
 <pre class="r"><code>&gt; df[c(&quot;age&quot;, &quot;weight&quot;)] # get the age and weight columns</code></pre>
 <pre><code>   age   weight
-1   34 48.42770
-2   32 48.40055
-3   24 59.94402
-4   25 53.12618
-5   21 53.03622
-6   30 53.20338
-7   32 45.89562
-8   25 45.31617
-9   25 35.59620
-10  33 58.56217</code></pre>
+1   27 54.31439
+2   29 52.41795
+3   29 47.84825
+4   27 44.26917
+5   23 50.67733
+6   22 41.60120
+7   38 56.18621
+8   25 44.87601
+9   23 53.64796
+10  34 53.94400</code></pre>
 <pre class="r"><code>&gt; df[1:2,]     # get the first two rows</code></pre>
 <pre><code>  age sex   weight
-1  34   M 48.42770
-2  32   F 48.40055</code></pre>
+1  27   M 54.31439
+2  29   F 52.41795</code></pre>
 <pre class="r"><code>&gt; df[1:3, 1:2] # get the first three rows and first three columns</code></pre>
 <pre><code>  age sex
-1  34   M
-2  32   F
-3  24   M</code></pre>
+1  27   M
+2  29   F
+3  29   M</code></pre>
 </div>
 <div id="reading-files-as-data-frames" class="section level1">
 <h1>Reading files as data frames</h1>
 <p>Most functions for reading data from files, such as <code>read.csv</code> and <code>read.table</code> typically return the data they read as data frames. We previously examined the <code>read.csv</code> function which parses “Comma Separated Value” format. The <code>read.delim</code> function does the same for tab or space delimited files. The package <a href="https://github.com/tidyverse/readxl">readxl</a> which is part of Hadley Wicham’s <a href="http://readr.tidyverse.org">“tidyverse” of R packages</a> provides functionality for reading Excel formatted spreadsheets.</p>
-<p>For now, we’ll stick to CSV files:</p>
+<p>For now, we’ll stick to CSV files. Download the “spellman-reformated.csv” file from the course wiki and then upload it to your RStudio docker container. Once you’ve done so, you can read the file as so:</p>
 <pre class="r"><code>&gt; spellman &lt;- read.csv(&quot;spellman-reformated.csv&quot;)</code></pre>
 <p>It’s also worth noting that <code>read.csv</code> and related functions will also read a file from a URL, like so:</p>
 <pre class="r"><code>&gt; alpha.small &lt;- read.csv(&quot;https://github.com/Bio311-class/Bio311-Spring2017/raw/master/data/spellman-alpha-factor-10genes.csv&quot;)</code></pre>
