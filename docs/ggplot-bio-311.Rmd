@@ -1,0 +1,491 @@
+---
+title: "Data visualization with ggplot"
+author: "Paul M. Magwene"
+date: "13 February 2017"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    theme: readable
+    highlight: default  
+    fig_width: 5
+    fig_height: 3.25
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, prompt = FALSE, eval = TRUE, 
+                      comment=NA, warning = FALSE, results="hide",
+                      message = FALSE, cache = TRUE)
+```
+
+# Recommendations regarding R Markdown
+
+I strongly recommend that when learning the material below, you use the R Markdown editor to create your code blocks.  This will allow for easier editing, exploration, and debugging.
+
+When creating code blocks that generate figures, you can tweak the figure width and height in the code block header  in order to generate nicer layouts, as shown in the example below.
+
+````
+```{r, fig.width = 6, fig.height = 4}
+x <- 1:10
+y <- x^2
+quickplot(x = x, y = y)
+```
+````
+
+# Introducing ggplot2
+
+Pretty much any statistical plot can be thought of as a mapping between data and one or more visual representations. For example, in a bivariate scatter plot we map two ordered sets of numbers (the variables of interest) to points in the Cartesian plane (x,y-coordinates).  We can further embellish our plot with additional mapping information, such as coloring the points depending on a categorical variable of interest, including error bars to indicate uncertainty, etc.
+
+This notion of representing plots in terms of their mappings is a powerful idea which is central to an approach for plotting that is represented in the R package `ggplot2` (ggplot for short).
+
+# Installing ggplot2
+
+Like all R packages, `ggplot2` can be installed either from the command line or via the GUI. ggplot2 is installed by default on the VM-Manage containers.  If you're installing ggplot2 on your own laptop, here's a reminder of how to do so from the command line:
+
+```{r, eval = FALSE}
+install.packages("ggplot2", dependencies=T)
+```
+
+Once the package is installed load the ggplot2 library as well as the dplyr and tidyr libraries.
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+```
+
+
+# Geometric and aesthetic mappings in ggplot2
+
+ggplot considers two types of mappings from data to visual representations:  1) "geometry mappings" (`geoms` in ggplot) which determine the type of geometric representation that a plot uses; and 2) "aesthetic mappings" (`aes` in the short-hand of ggplot), which determine the way that data are represented in a plot (e.g. symbols, colors).  Both a geometric mapping and an aesthetic mapping are required to fully specify a plot.
+
+The primary plotting function in ggplot is `ggplot`. The first argument to `ggplot` is always a data frame. The given data frame is the one that ggplot will use to look for all the mappings that you define in the subsequent pieces of the plot.  
+
+The second piece of information that we need to draw our plot is the `geom`. All geoms are encoded as R functions. The syntax used to add them to a plot is simply a `+` sign.  There are many different ggplot geoms for different plot types. We'll explore a few of the most common geoms in this document.
+
+The third bit of information we need is the aesthethic mapping, specifying which variables map to which aspects of the plot.  Aesthetic mappings are created using the `aes` function.  Aesthetic mappings can be passed either as the second argument to `ggplot` function *or* as arguments to geom functions. When you specify the aesthetics as an argument to ggplot, than they are used as the default for subsequent geoms.  Alternatively you can supply different aesthetics for every geom, if you want to combine representations. We'll illustrate both of these approaches below.
+
+# Example data: Spellman cell-cycle regulated genes
+
+As we did before, we'll use a subset of the genes that Spellman and colleagues determined were cell cycle regulated in their 1998 paper.
+
+```{r}
+spellman <- read.csv("spellman-reformated.csv")
+dim(spellman)
+
+# remind ourselves of some of the gene names
+names(spellman)[1:10]
+```
+
+# 1-D scatter
+
+One of the simplest visualizations of a single variable is simply to draw points along a number line, each point representing the value of one of the observations. This is sometimes called a "strip plot". 
+
+We can accomplish this with the `geom_point` function as shown below for the gene YAL022C from the Spellman data set. In this first plot we'll simply draw points along the x-axis, keeping the y-axis constant.
+```{r}
+ggplot(spellman, aes(x = YAL022C, y = 0)) + geom_point()
+```
+
+Note how we added the `geom_point` to the object created by `ggplot`.  In general we can think of `ggplot` as creating the base plot and the geoms as layers we add to this base If the geoms don't receive any specific arguments when they're called, they default to using the information specified in the base plot.   Another way to generate that plot would be as so:
+
+```{r}
+p <- ggplot(spellman, aes(x = YAL022C, y = 0))
+pts <- geom_point()
+p + pts
+```
+
+In this second version we created the base plot with `ggplot` and assigned it to the variable `p`.  Then we created another variable called `pts` to which we assigned the `geom_point` layer.  Then we combined the two to generate the plot.  This approach helps to make it clear what the various layers of our plot are accomplishing.
+
+Many of the points are overlapping, making them hard to see. We can make the points semi-transparent by specifying the `alpha`  parameter of `geom_point` (this is unrelated to the "alpha factor" experiment in the data set we're working with).  `alpha` controls the transparency of objects (0 being totally transparent, 1 being complete opaque). 
+
+
+```{r}
+ggplot(spellman, aes(x = YAL022C, y = 0)) +
+  geom_point(alpha = 0.25)
+```
+
+For the purposes of nicely organized and readable code, I wrote the statement above as multiple lines.  Notice the plus sign at the end of the first line
+
+## Adding categorical information
+
+Recall a key point about the Spellman data set -- there are multiple experimental treatments: alpha factor, cdc15 and cdc28 mutants, and elutriation.  These correspond to different mechanisms that are used to synchronize cell populations when studying the cell cycle in yeast. Let's see how to generate a strip plot that also includes a breakdown by experiment:
+
+```{r}
+ggplot(spellman, aes(x = expt, y = YAL022C)) + 
+  geom_point(alpha = 0.5)
+```
+
+That was easy!  All we had to do was change the aesthetic mapping, specifying `expt` as the x-variable and YAL022C as the y-variable.
+
+Now we have a much better sense of the data.  For example it's clear that expression of YAL022C is more variable in the elutriation experiment than in the alpha factor experiment.
+
+Let's tweak this a little by also adding color information, to further emphasize the
+distinct groupings. We can do this by simply adding another argument to the aesthetic mapping, specifying that the color information should come from the `expt` variable.
+
+```{r}
+ggplot(spellman, aes(x = expt, y = YAL022C, color = expt)) + 
+  geom_point(alpha = 0.5)
+```
+
+
+## Removing the legend and customizing axes labels and title
+
+In the previous plot, the legend information on the right is redundant with the experiment labels on the x-axis.  We can remove a legend using the `theme` function.  We'll also tweak the x-axis label and add a title using the `labs` (labels) function.
+
+```{r}
+ggplot(spellman, aes(x = expt, y = YAL022C, color = expt)) + 
+  geom_point(alpha = 0.5) +
+  theme(legend.position = "none") + 
+  labs(x = "Experimental Treatment", title = "Expression of YAL022C across Treatments")
+```
+
+
+
+# Boxplots
+
+Boxplots provide a very compact data representation, and are most often used for comparing distributions between groups. 1) A standard box plot depicts five useful features of a set of observations: the median (center most line); 2 and 3) the first and third quartiles (top and bottom of the box); 4) The whiskers of a boxplot extend from the first/third quarter to the highest value that is within 1.5 * IQR, where IQR is the inter-quartile range (distance between the first and third quartiles); 5) points outside of the whiskers are usually consider extremal points or outliers.  There are many variants on box plots, particularly with respect to the "whiskers". It's always a good idea to be explicit about what a box plot you've created shows. 
+
+```{r}
+ggplot(spellman, aes(x = expt, y = YAL022C)) + 
+  geom_boxplot() +
+  theme(legend.position = "none") + 
+  labs(x = "Experimental Treatment", title = "Expression of YAL022C across Treatments")
+```
+
+## Combining representations
+
+It is sometime useful to combine data representations, to facilitate comprehension or to identify trends.  Here we draw a strip plot on top of a boxplot.  This is useful for seeing both the broad trends (as given by the boxplot) as well as the details of the data (as given by the strip plot).
+
+We also introduce a new geom -- `geom_jitter` -- which is like `geom_point` but which adds a little bit of random noise to the positional information so as to reduce overplotting of symbols.  The width and height arguments specify the amount of noise to add.  Here we add just a small amount of noise in the horizontal direction to help make the individual points more visible (for comparison try regenerating the plot use `geom_point` instead of `geom_jitter`).
+
+```{r}
+ggplot(spellman, aes(x = expt, y = YAL022C)) + 
+  geom_boxplot() +
+  geom_jitter(width = 0.05, height=0, alpha = 0.25) +  
+  theme(legend.position = "none") + 
+  labs(x = "Experimental Treatment", title = "Expression of YAL022C across Treatments")
+```
+
+
+# Histograms
+
+Histograms are another very common way to depict univariate data (perhaps the most common!).   In a histogram rather than showing individual observations, we divide the range of the data into a set of bins and use bars or lines to depict the number (frequency) of points that fall into each bin.  This gives a good sense of the intervals in which most of the observations are found.
+
+
+```{r}
+ggplot(spellman, aes(x = YAL022C)) + geom_histogram(bins=8)
+```
+
+# Density plots
+
+One shortcoming of histograms is that they are sensitive to the choice of bin margins and the number of bins (try regenerating some of the above histograms with more or less bins to see this).
+
+An alternative is a "density plot", which you can think of as a smoothed version of a histogram.  Density plots still make some assumptions that affect the visualization, in particular a "smoothing bandwidth" (specified by the argument `bw`, see docs) which determines how course or granular the density estimation is.
+
+```{r}
+ggplot(spellman, aes(x = YAL022C)) + geom_density()
+```
+
+Note that the vertical scale on a density plot is no longer counts (frequency) but something called "density".  In a density plot, the total area under the plot adds up to one. Intervals in a density plot therefore have a probabilistic intepretation.
+
+Density plots can be useful when you want to contrast the distributions of multiple subgroups. For example, we can generate overlapping plots where we've colored and filled each density according to the experimental treatment it represents (we also set the `alpha` transparency parameter so the images don't hide each other).
+
+```{r}
+ggplot(spellman, aes(x = YAL022C, fill = expt, color=expt)) + 
+  # bw = "SJ" specifies an algorithm that tries to pick a good default bandwidth for smoothing
+  geom_density(bw="SJ", alpha = 0.1)
+```
+
+One thing we may not have noticed in the other plots we generated is that YAL022C appears to be somewhat bimodal (i.e. having two peaks) in the cdc28 experiment.
+
+# Scatter plots
+
+Scatter plots represent the relationships between pairs of variables in terms of points in the cartesian plane.  Each point represent the values of the two variables on interest measured in the same sample (observation).
+
+Let's generate a scatter plot representing the relationship between YAL022C and YNL058C.
+
+```{r}
+ggplot(spellman, aes(x = YAL022C, y = YNL058C)) + 
+  geom_point()
+```
+
+
+# Line plots
+
+Line plots depict one variable against another, where there is a meaningful ordering to the data.  For example, in a transcriptome data set with time series information, like the Spellman data set, we would typically plot the expression of genes of interest over time.  
+
+
+```{r}
+alpha <- filter(spellman, expt == "alpha")
+
+ggplot(alpha, aes(x = time, y = YAL022C)) + 
+  geom_line() + 
+  labs(x = "Time (mins)", y = "Expression of YAL022C")
+```
+
+
+## Reshape the data into "long" format
+
+As we start to make some fancier line plots it will be useful to have the data in long format, so we can group by variables like gene name and experimental treatment.  As we did in the last hands-on, we'll use the `gather` function from tidyr to reshape the data.
+
+```{r}
+spellman.long <- gather(spellman, gene, expression, -expt, -time)
+names(spellman.long)
+dim(spellman.long)
+```
+
+## Line plots for multiple genes
+
+Having reshaped the data we can then use this long format plus the pipe operator (`%>%`) to filter and plot the time series data for three genes of interest in the alpha factor experiment.
+
+```{r}
+genes.of.interest <- c("YAL022C", "YAL040C", "YAL053W")
+
+spellman.long %>% 
+  filter(gene %in% genes.of.interest & expt == "alpha") %>%
+  ggplot(aes(x = time, y = expression, color = gene)) + geom_line()
+```
+
+Note the use of the `%in%` operator which tests for inclusion within a vector.  Here we're filtering rows where the gene is one of our set of genes of interest.
+
+The `ggplot` function, like the functions included in dplyr, knows how to work with pipes. Not all functions are set up to do this, though generally the functions and packages in the "tidyverse" (http://tidyverse.org) are written to take advantage of pipes.
+
+
+## Line plots for one gene across multiple treatments
+
+Alternately we can plot the same gene in different experimental treatments.
+
+```{r}
+spellman.long %>%
+  filter(gene == "YAL022C") %>%
+  ggplot(aes(x = time, y = expression, color = expt)) + geom_line()
+```
+
+This is not a beautiful plot, but it does point at several aspects of the data set including missing values and the fact that the time scale for the different treatments may not be comparable.
+
+## Facetting on categorical variables
+
+We see that the different experiment treatments were carried out over different time ranges, due to the differences in their physiological effects.  Plotting them all on the same time scale can obscure that patterns of oscillation we might be interested in, so let's make a series of side-by-side plots that share the same y-axis, but have differently scaled x-axes.  
+
+Creating a set of related plots where you vary (or condition) on a categorical variable is very common and is sometimes referred to as "faceting".  `ggplot` includes facilities for faceting, in the form of the functions `facet_grid` and `facet_wrap`.
+
+```{r, fig.width = 8}
+spellman.long %>%
+  filter(gene == "YAL022C") %>%
+  ggplot(aes(x = time, y = expression, color = expt)) + 
+    geom_line() + 
+    facet_grid(~ expt, scales = "free_x")
+```
+
+
+The first argument to `facet_grid` is a "formula" that specifies what is drawn with respect to the rows and columns of the grid.  The formula can be generalized as `LHS ~ RHS` (LHS = left hand side, RHS = right hand side) where the LHS gives the rows and the RHS give the columns.  When nothing is given on one of the sides, as above, that indicates that there is no faceting in that dimension.  For the `scales` argument we specified "free_x", which lets each sub-plot scale its x axis appropriately (other arguments are "free_y", "free" [both x and y free], and "fixed" [use same axes scaling for all plots]).
+
+`facet_wrap` is like `facet_grid` except the plots are "wrapped" around to allow for a more compact representation.  The arguments are similar to `facet_grid` except you also specify the number of rows and columns you want to wrap the grid into.
+
+```{r, fig.width = 6, fig.height = 6}
+spellman.long %>%
+  filter(gene == "YAL022C") %>%
+  ggplot(aes(x = time, y = expression, color = expt)) + 
+    geom_line() + 
+    facet_wrap(~ expt, scales = "free_x", nrow = 2, ncol = 2)
+```
+
+
+# Plotting groups of genes as line plots
+
+One thing you'll be doing when you  learn about clustering, is examining groups of genes.  For now, let's apply a simple criterion to create a cluster by finding all other genes that are relatively strongly correlated with YAL022C.  
+
+Correlation is a measure of linear association between a pair of variables, and ranges from -1 to 1. A value near zero indicates the variables are uncorrelated (no linear association), while values approaching +1 indicate a strong positive association (the variables tend to get bigger or smaller together) while values near -1 indicate strong negative association (when one variable is larger, the other tends to be small).  For example, YAL022C and YNL058C are fairly strongly correlated, as we can see when we calculate their correlation using the `cor` function:
+
+```{r}
+cor(spellman$YAL022C, spellman$YNL058C, use = "pairwise.complete.obs")
+```
+
+Let's calculate a correlation matrix, giving all the pairwise correlations, for all the genes in the Spellman data set.  We need to drop two columns from the data frame, corresponding to "expt" and "time", and we then use the `cor` function to calculate the pairwise correlations. Since there is missing data (indicated with NAs) we also need to tell the `cor` function to only use pairwise complete observations when calculating correlations.
+
+```{r}
+trimmed.spellman <- select(spellman,-expt,-time)
+spellman.cor <- cor(trimmed.spellman, use = "pairwise.complete.obs")
+```
+
+The correlation matrix is a square matrix with the number of rows and columns equal to the number of variables: 
+
+```{r}
+dim(spellman.cor)
+```
+
+To get the correlations with a gene of interest, we can index with the gene name on the rows of the correlation matrix. 
+
+```{r}
+spellman.cor["YAL022C",]  
+```
+
+In the next statement we extract the names of the genes that have correlations with YAL022C greater than 0.6.   First we test genes to see if they have a correlation with YAL022C greater than 0.6, which returns a vector of TRUE or FALSE values.  This vector of Boolean values is than used to index into the rownames of the correlation matrix, pulling out the gene names where the statement was true.
+
+```{r}
+pos.corr.YAL022C <- rownames(spellman.cor)[spellman.cor["YAL022C",] > 0.6]
+pos.corr.YAL022C
+```
+
+We then show this set of genes correlated with YAL022C, using faceted line graphs:
+
+```{r, fig.width = 6, fig.height = 6}
+spellman.long %>%
+  filter(gene %in% pos.corr.YAL022C) %>%
+  ggplot(aes(x = time, y = expression, color = expt, group = gene)) + 
+    geom_line(alpha = 0.33) +
+    facet_wrap(~ expt, scales = "free_x", nrow = 2, ncol = 2) +
+    theme(legend.position = "none")
+```
+
+Note that we introduced a new variables to the aesthetic mapping -- `group`.  Specifying `group = gene`, makes sure the line plot connects correponding time points for each gene.  To see what it does when you don't specify this, try regenerating the plot without specifying the group variable.
+
+We can similarly filter for genes that have negative correlations with YAL022C. 
+
+```{r}
+neg.corr.YAL022C <- colnames(spellman.cor)[spellman.cor["YAL022C",] <= -0.4]
+```
+
+As before we generate a faceted line plot showing these genes by experiment:
+
+```{r, fig.width=6, fig.height=6}
+spellman.long %>%
+  filter(gene %in% neg.corr.YAL022C) %>%
+  ggplot(aes(x = time, y = expression, color = expt, group = gene)) +
+    geom_line(alpha = 0.33) +
+    facet_wrap(~ expt, scales = "free_x", nrow = 2, ncol = 2) +
+    theme(legend.position = "none")  
+```
+
+
+## Adding new columns and combining filtered data frames
+
+Now let's create a new data frame by: 1) filtering on our list of genes that have strong positive and negative correlations with YAL022C; and 2) creating a new variable, "corr.with.YAL022C", which indicates the sign of the correlation.  We'll use this new variable to group genes when we create the plot.
+
+```{r}
+pos.corr.df <- spellman.long %>%
+  filter(gene %in% pos.corr.YAL022C) %>%
+  mutate(corr.with.YAL022C = "positive")
+
+neg.corr.df <- spellman.long %>%
+  filter(gene %in% neg.corr.YAL022C) %>%
+  mutate(corr.with.YAL022C = "negative")
+
+combined.df <- rbind(pos.corr.df, neg.corr.df)
+```
+
+The function `rbind` ("row bind"), binds together the rows of the two data frames, creating a new data frame.
+
+Finally, we plot the data, colored according to the correlation with YAL022C. 
+
+```{r, fig.width = 8, fig.height=6}
+ggplot(combined.df, aes(x = time, y = expression, 
+                        color = corr.with.YAL022C, group = gene)) + 
+  geom_line(alpha=0.5) + 
+  facet_wrap(~ expt, nrow =2, ncol = 2, scales = "free_x") +
+  # changes legend title for discrete color legends
+  scale_color_discrete(name = "Correlation with YAL022C") 
+```
+
+
+# Heat maps
+
+Line plots can become  visually busy very quickly, and hence aren't very useful for more than a few tens of genes.  An alternative is  a "heat map" which depicts data in a grid or table like form, with values indicated by color.  Heat maps are good for depicting large amounts of data and providing a coarse "10,000 foot view".  We'll be looking at lots of heat maps when we get into clustering, but here's a simple example based on the genes that were positively and negatively correlated with YAL022C.
+
+
+## RColorBrewer
+
+The `RColorBrewer` packages provides nice color schemes that are useful for creating heat maps. RColorBrewer defines a set of color palettes that have been optimized for color discrimination, to be color blind friendly, etc. Once you've installed the RColorBrewer package you can see the available color palettes as so:
+
+```{r, fig.height = 5, fig.width = 7}
+library(RColorBrewer)
+# show representations of the palettes
+par(cex = 0.5) # reduce size of text in the follow plot
+display.brewer.all()  
+```
+
+## Creating a heat map using `geom_tile`
+
+We'll use the `geom_tile` geom to create the heat map.  We'll depict genes in rows, time points in columns, and expression values by the fill color of each tile. We'll use the Red-to-Blue ("RdBu") color scheme defined in RColorBrewer, however we'll reverse the scheme so blues represent low expression and reds represent high expression.
+
+```{r, fig.height = 6, fig.width = 6}
+# generate the color scheme to use
+color.scheme <- rev(brewer.pal(8,"RdBu"))
+
+# re-factor gene names so positive and negative genes are spatially distinct in plot
+combined.df$gene <- factor(combined.df$gene, levels = c(pos.corr.YAL022C, neg.corr.YAL022C))
+
+combined.df %>%
+  filter(expt == "cdc28") %>%
+  ggplot(aes(x = time, y = gene)) + geom_tile(aes(fill = expression)) +
+  scale_fill_gradientn(colors=color.scheme) 
+```
+
+Note that YAL022C is at the bottom of the plot. Can you visually see the breakpoint between the positively and negatively correlated sets of genes?
+
+
+# Laying out multiple plots with the cowplot package
+
+The R package [cowplot](https://cran.r-project.org/web/packages/cowplot/vignettes/introduction.html) provides a convenient set of tools for making production ready figures.  Cowplot is *not* installed by default on VM-Manage, so you'll have to install it yourself.
+
+```{r, eval=FALSE}
+install.packages("cowplot", dependencies = TRUE)
+```
+
+Once the package is installed, load the library:
+
+```{r}
+library(cowplot)
+```
+
+We'll be using a cowplot defined function called `plot_grid` to create a nice layout composed of multiple plots arranged in a grid.  This is different than `facet_grid` in that it allows us to layout unrelated plots, where as facets must explicitly be related in some manner.
+
+```{r, fig.width = 8, fig.height = 5}
+cdc28.filtered <- filter(combined.df, expt == "cdc28")
+
+pos.corr.lineplot <-  cdc28.filtered %>%
+  filter(gene %in% pos.corr.YAL022C) %>%
+  ggplot(aes(x = time, y = expression, group = gene)) +
+    geom_line(alpha = 0.33, color = 'red') +
+    labs(x = "Time (mins)", y = "Expression", 
+      title = "Genes Positively correlated\nwith YAL022C")
+
+neg.corr.lineplot <-  cdc28.filtered %>%
+  filter(gene %in% neg.corr.YAL022C) %>%
+  ggplot(aes(x = time, y = expression, group = gene)) +
+    geom_line(alpha = 0.33, color = 'blue') +
+    labs(x = "Time (mins)", y = "Expression", 
+      title = "Genes negatively correlated\nwith YAL022C")
+
+plot_grid(pos.corr.lineplot, neg.corr.lineplot, align = "v", labels = c("A", "B"))
+```
+
+If we want to get really fancy, we can use cowplot's `draw_plot` function that allows us to place plots at arbitrary locations and at arbitrary sizes onto the canvas. The coordinates of the canvas  run from 0 to 1, and the point (0, 0) is in the lower left corner of the canvas.
+
+We'll use `draw_plot` to draw a complex figure with a heatmap on the left, and two smaller line plots on the right.
+
+```{r, fig.width = 8, fig.height = 8}
+heat.map <- ggplot(cdc28.filtered, aes(x = time, y = gene)) + 
+  geom_tile(aes(fill = expression)) +
+  scale_fill_gradientn(colors=color.scheme) + 
+  theme(legend.position = "none")
+
+fancy.plot <- ggdraw() + 
+  draw_plot(heat.map, 0, 0, width = 0.6) + 
+  draw_plot(neg.corr.lineplot, 0.6, 0.5, width = 0.4, height = 0.5) +
+  draw_plot(pos.corr.lineplot, 0.6, 0,   width = 0.4, height = 0.5) + 
+  draw_plot_label(c("A", "B", "C"), c(0, 0.6, 0.6), c(1, 1, 0.5), size = 15)
+
+fancy.plot
+```
+
+## Saving plots
+
+cowplot has a funtion `save_plot` which is a better version of ggplots `ggsave` function. Let's save our awesome plots that we created above as a PNG file. 
+
+```{r}
+# after all that hard work, save our plot!
+save_plot("my-fancy-plot.png", fancy.plot, base_height = 8, base_width = 9)
+```
+
+If working on VM-Manage, once you save the plot you can download it to your local filesystem using the "Export" option in the files tab in RStudio.
