@@ -290,6 +290,7 @@ Having defined the data we want to plot in the heatmap we can now use `heatmap.2
 ```{r, fig.width = 8, fig.height = 8}
 heatmap.2(transposed.alpha.mtx,
           Rowv = cluster3.tree,  # use the dendrogram previously calculated
+          Colv = NULL, # don't mess with my columns! (i.e. keep current ordering )
           dendrogram = "row",   # only draw row dendrograms
           breaks = seq(-2, 2, length.out = 9),  # OPTIONAL: set break points for colors
           col = color.scheme,  # use previously defined colors
