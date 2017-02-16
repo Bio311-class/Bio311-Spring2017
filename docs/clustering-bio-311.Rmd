@@ -251,7 +251,7 @@ cluster3.tree  %>%
 
 ```
 
-## Combining heatmaps and dendrograms
+# Combining heatmaps and dendrograms
 
 A common visualization used in transcriptome studies is to combine dendrograms and heatmaps.  To do this with a minimum of fuss we'll use a package called "gplots" which includes a heatmap function that will also plot dendrograms next
 
