@@ -1,0 +1,352 @@
+---
+title: "Clustering in R"
+author: "Paul M. Magwene"
+date: "16 February 2017"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    theme: readable
+    highlight: default  
+    fig_width: 5
+    fig_height: 3.25
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, prompt = FALSE, eval = TRUE, 
+                      comment=NA, warning = FALSE, results="hide",
+                      message = FALSE, cache = TRUE)
+```
+
+
+# Standard libraries
+
+First load some of the useful R packages we've been employing.
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(RColorBrewer)
+```
+
+# Load the data
+
+As we have in previous class sessions we'll be using the gene expression data from Spellman et al.
+
+```{r}
+spellman <- read.csv("spellman-reformated.csv")
+spellman.long <- gather(spellman, gene, expression, -time, -expt) 
+```
+
+
+# Hierarchical Clustering in R
+
+Hierarchical clustering in R can be carried out using  the `hclust` function. The `method` argument to `hclust` determines the group distance function used (single linkage, complete linkage, average, etc.).
+
+The input to `hclust` is a dissimilarity matrix. The function `dist` provides some of the basic dissimilarity measures (e.g. Euclidean, Manhattan, Canberra; see method argument of `dist`) but you can convert an arbitrary square matrix to a distance object by applying the `as.dist` function to the matrix.
+
+We're primarily interested in clustering the variables of our data set -- genes -- in order to discover what sets of gene are expressed in similar patterns (motivated by the idea that genes that are expressed in a similar manner are likely regulated by the same sets of transcription factors). So we need an appropriate similarity/dissimilarity measure for variables. The correlation coefficient is a suitable measure of linear association between variables. Correlations range from 1 for perfectly correlated variables to -1 for anti-correlated variables. Uncorrelated variables have values near zero. Correlation is a measure of similarity so we'll turn it to into a measure of
+dissimilarity before passing it to the `as.dist` function.
+
+```{r}
+spellman.cor <- select(spellman, -time, -expt) %>% 
+  cor(use="pairwise.complete.obs")
+
+spellman.dist <- as.dist(1 - spellman.cor)
+```
+The `use` argument to the `cor` function specifies that when there are missing
+values, the function should use all the available observations that have data
+necessary to calculate a correlation for any given pair of genes. We then turn
+the correlation into a distance measure by subtracting it from 1 (so perfectly
+positively correlated variables have distance 0) and passing it to the `as.dist`
+function.
+
+We're now ready to put the `hclust` function to use. We first generate the
+hierarchical clustering, use the "complete linkage" method (see lecture slides):
+
+```{r, fig.width = 10, fig.height = 6}
+spellman.tree <- hclust(spellman.dist, method="complete")
+```
+
+Having generated the tree object, we can plot it using the multipurpose `plot` function:
+```{r, fig.width = 10, fig.height = 6}
+plot(spellman.tree)
+```
+
+Ugh - that's an ugly plot! One major problem is that the text labels at the
+bottom of the tree are too large, and they're overlapping each other. We can
+tweak that a little by changing the text size with the `cex` parameter.
+
+```{r, fig.width = 10, fig.height = 6}
+plot(spellman.tree, cex=0.2)
+```
+
+That's a little better, but we're going to need some additional tools to wrangle
+this dendrogram into a more usable state.
+
+# Manipulating hierarchical clusterings with dendextend
+
+To work with and manipulate hierarchical clusterings and to create nicer dendrograms we're going to use a package called [dendextend](https://cran.r-project.org/web/packages/dendextend/vignettes/introduction.html). dendextend is not installed by default on VM-Manage (or a standard R install) so install it as so:
+
+```{r, eval=FALSE}
+install.packages("dendextend", dependencies = TRUE)
+```
+
+and then load it using the standard `library` command:
+
+```{r}
+library(dendextend)
+```
+
+First we'll create a `dendrogram` object from our clustering tree, and use some
+`dendextend` features to examine a few of the properties of the dendrogram.
+
+```{r, fig.width = 10, fig.height = 6}
+spellman.dend <- as.dendrogram(spellman.tree) # create dendrogram object
+```
+
+`dendextend` includes a number of functions for examing the tree. For example, to examine the number of "leaves" (= # of genes we clustered) or nodes (= # of leaves + number of internal joins) in the tree we can do the following:
+
+```{r}
+nleaves(spellman.dend)  # number of leaves in tree
+nnodes(spellman.dend)  # number of nodes (=leaves + joins) in tree
+```
+
+## Plotting dendrograms in dendextend
+
+The plot function for `dendextend` dendrogram objects (see `?plot.dendrogram`) has a number of additional parameters that allows us to tweak the plot.  For example, for large dendrograms it often makes sense to remove the leaf labels entirely as they will often be too small to read. This can be accomplished using the `leaflab` argument:
+
+```{r, fig.width = 10, fig.height = 6}
+plot(spellman.dend, leaflab = "none")
+```
+
+
+
+# Cutting dendrograms
+
+When looking at the figure we just generated it looks like there may be four
+major clusters. We'll use the `cutree` function to cut the tree into four pieces
+and examine the implied clustering (note that the `cutree` function can also be
+used to cut the tree at a specified height).
+
+```{r, results="show"}
+clusters <- cutree(spellman.dend, k=4)
+table(clusters)
+```
+
+When we cut the tree we got four clusters of size 204, 194, 171, and 155. If you
+examine the `cutree` documentation (reminder: use `?cutree` from the command
+line) you will see that it returns a vector of integers, giving the
+corresponding cluster to which each variable (gene) is assigned. The code below shows the cluster assignments for the first six genes.
+
+```{r}
+clusters[1:6]
+```
+
+Next let's create a nicer plot that highlights each of the clusters. The
+function `color_branches` does essentially the same thing as `cutree` but it
+returns information that the `plot` function can use to appropriately color
+branches of the tree according to cluster membership.
+
+```{r, fig.width = 10, fig.height = 6}
+plot(color_branches(spellman.dend, k=4),leaflab="none")
+```
+
+
+Now we're getting somewhere! However, our clusters are still pretty big. Let's
+check out the clusterings we get when we cut with eight clusters rather than
+four.
+
+```{r, fig.width = 10, fig.height = 6, results = "hide"}
+plot(color_branches(spellman.dend, k=8),leaflab="none")
+clusters <- cutree(spellman.dend, k=8, order_clusters_as_data = FALSE)
+table(clusters)
+```
+
+## Looking at clusters
+
+To further explore the clusters, let's create a data frame that holds the information about genes and their cluster assignments:
+
+```{r}
+clusters.df <- data.frame(gene = names(clusters), cluster = clusters)
+```
+
+Having created this data frame, it's straightforward to lookup the cluster to which a gene belongs:
+
+```{r}
+clusters.df["YAL022C",]
+clusters.df["YBL002W",]
+```
+
+or to get all the names of genes in a given cluster:
+
+```{r}
+cluster3.genes <- filter(clusters.df, cluster == 3)$gene
+cat(cluster3.genes, quote=F,sep="\n")
+```
+
+Note the use of the `cat` function to print out a list of the gene names for
+cluster 3, with the names separated by returns (`"\n"`). This is useful if you
+want to cut and paste the gene names into a document, or an online analysis tool
+such as various Gene Ontology (GO) browsers (we'll talk about these in a later
+class session).
+
+## Generating a heat map from a cluster
+
+Let's generate a heat map showing the expression of all the genes in the alpha factor experiment for the first cluster that we found above:
+
+```{r, fig.height = 8, fig.width = 6}
+color.scheme <- rev(brewer.pal(8,"RdBu")) # generate the color scheme to use
+
+spellman.long %>%
+  filter(gene %in% cluster3.genes & expt == "alpha") %>%
+  ggplot(aes(x = time, y = gene)) + geom_tile(aes(fill = expression)) +
+  scale_fill_gradientn(colors=color.scheme) + 
+  theme(axis.text.y = element_text(size = 6))  # set size of y axis labels
+```
+
+## Working with sub-trees
+
+The `cutree` function illustrated above gives us the groupings implied by cutting the tree at a certain height.  However, it does not explicitly return objects representing the sub-trees themselves. If you want to do computations or generate figures of the sub-trees, you'll need to use the `cut` function.
+
+```{r}
+# note that I determined the height to cut at by looking at the colored dendrogram
+# plot above for 8 clusters
+sub.trees <- cut(spellman.dend, h = 1.48)
+```
+
+The `cut` function returns multiple sub-trees designated `upper` and
+`lower`.  The upper tree is the tree "above" the cut, while the multiple
+"lower" trees represent the disconnected sub-trees "below" the cut.  For
+purposes of clustering you usually are most interested in the sub-trees
+(clusters) below the cut.
+
+```{r}
+sub.trees$lower
+```
+
+We can retrieve any particular sub-tree by indexing into the list:
+
+```{r}
+cluster3.tree <- sub.trees$lower[[3]]
+cluster3.tree
+nleaves(cluster3.tree)
+```
+
+## Setting dendrogram parameters in dendextend
+
+`dendextend` has a generic function -- `set` -- for changing the parameters associated with dendrograms.  The basic form of the function is `set(object, what, value)`, where `object` is the dendrogram you're working with, `what` is a character string indicating the parameter you want to change, and `value` is the setting you wishing to assign to that parameter.
+
+A full list of dendrogram parameters that can be changed is provided in the [dendextend](https://cran.r-project.org/web/packages/dendextend/vignettes/introduction.html#the-set-function) documentation.  
+
+We'll use the `set` function to make a nice diagram of our cluster 3 sub-tree:
+
+```{r, fig.width = 6, fig.height = 6}
+
+cluster3.tree  %>%
+  set("labels_cex", 0.45) %>%
+  set("labels_col", "red") %>%
+  plot(horiz = TRUE)  # plot horizontally
+
+```
+
+## Combining heatmaps and dendrograms
+
+A common visualization used in transcriptome studies is to combine dendrograms and heatmaps.  To do this with a minimum of fuss we'll use a package called "gplots" which includes a heatmap function that will also plot dendrograms next
+
+### Install and load gplots
+
+```{r, eval = FALSE}
+install.packages("gplots", dependencies = TRUE)
+```
+
+```{r}
+library(gplots)
+```
+
+### Generate a heatmap using gplots
+
+The gplots function we will use is called `heatmap.2`.  This function requires as input our data in the form of a matrix.  If you provide no other information `heatmap.2` will carry out clustering for you, clustering both the rows and columns of the data matrix.  
+
+However, here we want to draw a dendrogram (representing similarity among variables) we've already calculated, and to create a heat map just for the alpha factor data, so we need to do some pre-calculations and tweak the `heatmap.2` arguments:
+
+```{r}
+# subset out alpha factor data
+alpha.factor <- filter(spellman, expt == "alpha")
+
+# create matrix after dropping time and expt columns
+alpha.mtx <- as.matrix(select(alpha.factor, -time, -expt)) # drop time, expt columns
+
+# set row names to corresponding time points for nice plotting
+row.names(alpha.mtx) <- alpha.factor$time
+
+# transpose the matrix so genes are drawn in rows
+transposed.alpha.mtx <- t(alpha.mtx)
+```
+
+Having defined the data we want to plot in the heatmap we can now use `heatmap.2` as follows
+
+```{r, fig.width = 8, fig.height = 8}
+heatmap.2(transposed.alpha.mtx,
+          Rowv = cluster3.tree,  # use the dendrogram previously calculated
+          dendrogram = "row",   # only draw row dendrograms
+          breaks = seq(-2, 2, length.out = 9),  # OPTIONAL: set break points for colors
+          col = color.scheme,  # use previously defined colors
+          trace = "none", density.info = "none",  # remove distracting elements of plot
+          xlab = "Time (mins)")
+```
+
+# K-means Clustering in R
+
+The `kmeans` function calculates standard k-means clusters in R. The
+input is a data matrix (perhaps transformed before hand) or distance matrix and
+$k$, the number of clusters. Alternatively you can specify starting cluster
+centers. You can also run the algorithm multiple times with different random
+starting positions by using the `nstart` argument.
+
+```{r}
+spellman.kmeans <- kmeans(1 -spellman.cor, 8) # create k-means clustering with 8 clusters
+kclusters <- spellman.kmeans$cluster
+table(kclusters)
+```
+
+For comparison with our earlier hierarchical clustering results, lets plot the k-means inferred clusters back onto our dendrogram.
+
+```{r, fig.width = 10, fig.height = 8}
+ # reorder genes so they match the dendrogram
+kclusters <- kclusters[order.dendrogram(spellman.dend)]
+
+# get  branch colors so we're using the same palette
+dend.colors <- unique(get_leaves_branches_attr(color_branches(spellman.dend, k=8), attr="col"))
+
+# color the branches according to their k-means cluster assignment
+plot(branches_attr_by_clusters(spellman.dend, kclusters, dend.colors),leaflab="none")
+```
+
+Comparing the inferred k-means clustering to our previous complete linkage
+clustering we see some clusters that are similar between the two, but there are
+also significant differences. We'll see in the next class how we can start to
+zoom and and explore those differences further.
+
+## Heat map from k-means cluster
+
+In the same manner we generated a heat map for one of the hierarchical clustering sub-trees, we can generate a similar heat map for a k-means cluster. Let's examine cluster 4 which had 62 genes:
+
+```{r, fig.height = 8, fig.width = 6}
+
+kcluster4.genes <- names(kclusters[kclusters == 4])
+
+spellman.long %>%
+  filter(gene %in% kcluster4.genes & expt == "alpha") %>%
+  ggplot(aes(x = time, y = gene)) + 
+    geom_tile(aes(fill = expression)) +
+    scale_fill_gradientn(colors=color.scheme) + 
+    labs(title = "K-means Clustering of Spellman et al. Data\nCluster 4") + 
+    theme(axis.text.y = element_text(size = 6))  # set size of y axis labels
+```
+
+
+
+
+
