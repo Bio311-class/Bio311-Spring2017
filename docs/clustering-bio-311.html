@@ -223,7 +223,7 @@ table(clusters)</code></pre>
 clusters.df[&quot;YBL002W&quot;,]</code></pre>
 <p>or to get all the names of genes in a given cluster:</p>
 <pre class="r"><code>cluster3.genes &lt;- filter(clusters.df, cluster == 3)$gene
-cat(cluster3.genes, quote=F,sep=&quot;\n&quot;)</code></pre>
+cat(as.character(cluster3.genes), quote=F,sep=&quot;\n&quot;)</code></pre>
 <p>Note the use of the <code>cat</code> function to print out a list of the gene names for cluster 3, with the names separated by returns (<code>&quot;\n&quot;</code>). This is useful if you want to cut and paste the gene names into a document, or an online analysis tool such as various Gene Ontology (GO) browsers (we’ll talk about these in a later class session).</p>
 </div>
 <div id="generating-a-heat-map-from-a-cluster" class="section level2">
@@ -287,7 +287,10 @@ row.names(alpha.mtx) &lt;- alpha.factor$time
 # transpose the matrix so genes are drawn in rows
 transposed.alpha.mtx &lt;- t(alpha.mtx)</code></pre>
 <p>Having defined the data we want to plot in the heatmap we can now use <code>heatmap.2</code> as follows</p>
-<pre class="r"><code>heatmap.2(transposed.alpha.mtx,
+<pre class="r"><code># this is a large figure, so if working in RMarkdown document I suggest specifying
+# the code block header as so to make the figure large
+# {r, fig.width = 8, fig.height = 8}
+heatmap.2(transposed.alpha.mtx,
           Rowv = cluster3.tree,  # use the dendrogram previously calculated
           Colv = NULL, # don't mess with my columns! (i.e. keep current ordering )
           dendrogram = &quot;row&quot;,   # only draw row dendrograms

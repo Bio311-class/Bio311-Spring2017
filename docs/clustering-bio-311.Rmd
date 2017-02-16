@@ -183,7 +183,7 @@ or to get all the names of genes in a given cluster:
 
 ```{r}
 cluster3.genes <- filter(clusters.df, cluster == 3)$gene
-cat(cluster3.genes, quote=F,sep="\n")
+cat(as.character(cluster3.genes), quote=F,sep="\n")
 ```
 
 Note the use of the `cat` function to print out a list of the gene names for
@@ -288,6 +288,9 @@ transposed.alpha.mtx <- t(alpha.mtx)
 Having defined the data we want to plot in the heatmap we can now use `heatmap.2` as follows
 
 ```{r, fig.width = 8, fig.height = 8}
+# this is a large figure, so if working in RMarkdown document I suggest specifying
+# the code block header as so to make the figure large
+# {r, fig.width = 8, fig.height = 8}
 heatmap.2(transposed.alpha.mtx,
           Rowv = cluster3.tree,  # use the dendrogram previously calculated
           Colv = NULL, # don't mess with my columns! (i.e. keep current ordering )
