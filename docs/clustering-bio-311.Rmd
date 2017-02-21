@@ -6,7 +6,7 @@ output:
   html_document:
     toc: true
     toc_depth: 2
-    theme: readable
+    theme: journal
     highlight: default  
     fig_width: 5
     fig_height: 3.25
@@ -46,8 +46,7 @@ Hierarchical clustering in R can be carried out using  the `hclust` function. Th
 
 The input to `hclust` is a dissimilarity matrix. The function `dist` provides some of the basic dissimilarity measures (e.g. Euclidean, Manhattan, Canberra; see method argument of `dist`) but you can convert an arbitrary square matrix to a distance object by applying the `as.dist` function to the matrix.
 
-We're primarily interested in clustering the variables of our data set -- genes -- in order to discover what sets of gene are expressed in similar patterns (motivated by the idea that genes that are expressed in a similar manner are likely regulated by the same sets of transcription factors). So we need an appropriate similarity/dissimilarity measure for variables. The correlation coefficient is a suitable measure of linear association between variables. Correlations range from 1 for perfectly correlated variables to -1 for anti-correlated variables. Uncorrelated variables have values near zero. Correlation is a measure of similarity so we'll turn it to into a measure of
-dissimilarity before passing it to the `as.dist` function.
+We're primarily interested in clustering the variables of our data set -- genes -- in order to discover what sets of gene are expressed in similar patterns (motivated by the idea that genes that are expressed in a similar manner are likely regulated by the same sets of transcription factors). So we need an appropriate similarity/dissimilarity measure for variables. The correlation coefficient is a suitable measure of linear association between variables. Correlations range from 1 for perfectly correlated variables to -1 for anti-correlated variables. Uncorrelated variables have values near zero. Correlation is a measure of similarity so we'll turn it to into a measure of dissimilarity before passing it to the `as.dist` function.
 
 ```{r}
 spellman.cor <- select(spellman, -time, -expt) %>% 
@@ -135,8 +134,7 @@ clusters <- cutree(spellman.dend, k=4)
 table(clusters)
 ```
 
-When we cut the tree we got four clusters of size 204, 194, 171, and 155. If you
-examine the `cutree` documentation (reminder: use `?cutree` from the command
+When we cut the tree we got four clusters, whose size is given by the `table` command above. If you examine the `cutree` documentation (reminder: use `?cutree` from the command
 line) you will see that it returns a vector of integers, giving the
 corresponding cluster to which each variable (gene) is assigned. The code below shows the cluster assignments for the first six genes.
 
@@ -201,8 +199,9 @@ color.scheme <- rev(brewer.pal(8,"RdBu")) # generate the color scheme to use
 
 spellman.long %>%
   filter(gene %in% cluster3.genes & expt == "alpha") %>%
-  ggplot(aes(x = time, y = gene)) + geom_tile(aes(fill = expression)) +
-  scale_fill_gradientn(colors=color.scheme) + 
+  ggplot(aes(x = time, y = gene)) + 
+  geom_tile(aes(fill = expression)) +
+  scale_fill_gradientn(colors=color.scheme, limits = c(-2,2)) + 
   theme(axis.text.y = element_text(size = 6))  # set size of y axis labels
 ```
 
@@ -301,21 +300,22 @@ heatmap.2(transposed.alpha.mtx,
           xlab = "Time (mins)")
 ```
 
-# K-means Clustering in R
+# K-means/K-medoids Clustering in R
 
-The `kmeans` function calculates standard k-means clusters in R. The
-input is a data matrix (perhaps transformed before hand) or distance matrix and
-$k$, the number of clusters. Alternatively you can specify starting cluster
-centers. You can also run the algorithm multiple times with different random
-starting positions by using the `nstart` argument.
+The `kmeans` function calculates standard k-means clusters in R.  However, we're actually going to use a related function that calculates "k-medoids" clustering.  K-medoids clustering differs from k-means in that the objective function is to minimize the sum of dissimilarities from the cluster centers ("medoids") rather then the sum of squared distances. K-medoids clustering tends to be more robust to outliers than K-means.  Another advantage for our purposes is that the k-medoids algorithm, unlike the standard implementation of k-means, can accept a distance or dissimilarity matrix as input.
+
+K-medoids clustering is implemented in the function `pam` (Partitioning Around Medoids), which is found in a package called `cluster` that is included with the standard R installation.  
+
+
 
 ```{r}
-spellman.kmeans <- kmeans(1 -spellman.cor, 8) # create k-means clustering with 8 clusters
-kclusters <- spellman.kmeans$cluster
+library(cluster)
+spellman.kmedoids <- pam(spellman.dist, 8) # create k-medoids clustering with 8 clusters
+kclusters <- spellman.kmedoids$cluster
 table(kclusters)
 ```
 
-For comparison with our earlier hierarchical clustering results, lets plot the k-means inferred clusters back onto our dendrogram.
+For comparison with our earlier hierarchical clustering results, lets plot the k-medoids inferred clusters back onto our dendrogram.
 
 ```{r, fig.width = 10, fig.height = 8}
  # reorder genes so they match the dendrogram
@@ -328,14 +328,14 @@ dend.colors <- unique(get_leaves_branches_attr(color_branches(spellman.dend, k=8
 plot(branches_attr_by_clusters(spellman.dend, kclusters, dend.colors),leaflab="none")
 ```
 
-Comparing the inferred k-means clustering to our previous complete linkage
+Comparing the inferred k-medoids clustering to our previous complete linkage
 clustering we see some clusters that are similar between the two, but there are
 also significant differences. We'll see in the next class how we can start to
 zoom and and explore those differences further.
 
-## Heat map from k-means cluster
+## Heat map from k-medoids cluster
 
-In the same manner we generated a heat map for one of the hierarchical clustering sub-trees, we can generate a similar heat map for a k-means cluster. Let's examine cluster 4 which had 62 genes:
+In the same manner we generated a heat map for one of the hierarchical clustering sub-trees, we can generate a similar heat map for a k-medoids cluster. Let's examine cluster 4:
 
 ```{r, fig.height = 8, fig.width = 6}
 
@@ -345,8 +345,8 @@ spellman.long %>%
   filter(gene %in% kcluster4.genes & expt == "alpha") %>%
   ggplot(aes(x = time, y = gene)) + 
     geom_tile(aes(fill = expression)) +
-    scale_fill_gradientn(colors=color.scheme) + 
-    labs(title = "K-means Clustering of Spellman et al. Data\nCluster 4") + 
+    scale_fill_gradientn(colors=color.scheme, limits=c(-2,2)) + 
+    labs(title = "K-medoids Clustering of Spellman et al. Data\nCluster 4") + 
     theme(axis.text.y = element_text(size = 6))  # set size of y axis labels
 ```
 
