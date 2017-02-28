@@ -20,31 +20,31 @@ Instructions: Carry out the analyses described below in R, creating a report in 
 
 3. Visualizing a subset of the data
 
-	a) Create a subset of the data corresponding to Nitrogen Depletion time series experiments (row names that sart with "Nitrogen.Depletion....")
+	a) Create a subset of the data corresponding to Nitrogen Depletion time series experiments (row names that start with "Nitrogen.Depletion....").
 
-	b) Create a new data frame with an additional column corresponding to the "time"  associated with each nitrogen depletion measurement (the `mutate` function in dplyr might be useful)
+	b) Create a new data frame with an additional column corresponding to the "time" associated with each nitrogen depletion measurement (the `mutate` function in dplyr might be useful).
 
 	c) For the first 10 genes in the data set, create time series plots, showing how the expression of each gene changes over time in the nitrogen depletion experiments.
 
 
 4. Hierarchical clustering 
 	
-	a) Carry out hierarchical clustering on the genes in the data set using "complete linkage" clustering using (1 - Pearson correlation) as the distance metric
+	a) Carry out hierarchical clustering on the genes in the data set using "complete linkage" clustering using (1 - Pearson correlation) as the distance metric.
 
-	    - Generate trees and heatmaps to illustrate the clustering you generated
+	    - Generate trees alongside heatmaps to illustrate the clustering you generated.
 	
-		- Explore how cutting the resulting dendrogram are different heights changes the number and size of the resulting clusters.
+		- How does cutting the resulting dendrogram at different heights change the number and size of the resulting clusters? Provide these numbers for four different cut heights. 
 
-		- In addition to automatic cutting based on tree height, it's perfectly legitimate to consider using visual inspection or other "manual criteria" to further sub-divide clusters.  Note that if you generate sub-trees with the `cut` function, you can iteratively apply cuts to sub-trees to explore sub-structure.
+		- In addition to automatic cutting based on tree height, it's perfectly legitimate to consider using visual inspection or other "manual criteria" to further sub-divide clusters.  Note that if you generate sub-trees with the `cut` function, you can iteratively apply cuts to sub-trees to explore sub-structure. 
 		
 		- Create a correlation heat-map, with the rows and variables of the matrix sorted by cluster assignment, to help evaluate your clustering.
 
 		- Based on your inspection and analysis of the data, how many major clusters (>20 genes) do you think there are? Explain your reasoning for arriving at this number.
 
 
-	b) Repeat the hierarchical clustering, but with "single linkage" as the clustering method instead
+	b) Repeat the hierarchical clustering, but with "single linkage" as the clustering method instead.
 
-		- Generate trees, heatmaps, and correlation heatmaps to illustrate the single clustering you generated
+		- Generate trees, heatmaps, and correlation heatmaps to illustrate the single clustering you generated.
 	
 		- As before, vary the height at which you cut the dendrogram. How many many clusters do you think there are based on the single linkage dendrogram?
 
@@ -63,7 +63,7 @@ Instructions: Carry out the analyses described below in R, creating a report in 
 
 	a) For the three largest clusters you generated via K-means clustering, carry out a GO term enrichment analysis based on the "Biological Process" ontology, using the g:Profile web tool at http://biit.cs.ut.ee/gprofiler/
 
-	b) What terms did you find to be enriched in your clusters?  For more compact representation of the ontology output from g:Profiler try setting the "Hierarchical filtering" setting to "Best per parent (moderate").
+	b) What terms did you find to be enriched in your clusters?  For more compact representation of the ontology output from g:Profiler try setting the "Hierarchical filtering" setting to "Best per parent (moderate)".
 
 
 8. Clustering rows (conditions)
