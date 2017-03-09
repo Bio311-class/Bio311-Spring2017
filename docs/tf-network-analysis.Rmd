@@ -1,0 +1,436 @@
+---
+title: "Analyzing TF Networks"
+author: "Paul M. Magwene"
+date: "March 9, 2017"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    theme: readable
+    highlight: default  
+    fig_width: 6
+    fig_height: 6
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, prompt = FALSE, eval = TRUE, 
+                      comment=NA, warning = FALSE, results="hide",
+                      message = FALSE, cache = TRUE)
+```
+
+
+
+## Load packages
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+
+## Load and explore the Lee et al. data
+
+```{r}
+lee <- read.csv("lee-etal-data.csv")
+```
+
+Data frame dimensions
+```{r}
+dim(lee)
+```
+
+Column (variable) names
+```{r}
+names(lee)[1:15] # first 15 column names
+```
+
+Take a look at the first few rows and columns:
+```{r}
+lee[1:5, 1:8] # first 5 rows, first 8 columns
+```
+
+Look at data for one variable:
+
+```{r}
+lee$MATA1[1:15]  # first 15 elements 
+```
+
+These entries give p-values for the binding interactions between the TF of interest (MATA1) and the corresponding genes.  The smaller the p-value, the stronger the evidence that the TF of interest binds to the promoter region of a given gene. "NaN" entries indicate missing data.
+
+
+## Create a modified version of the data frame
+
+Let's create a modified version of data frame, dropping the `Common.Name` and `Annotation` variables, and renaming the `Name` variable to `target`.
+
+```{r}
+lee.tfs <- lee %>% 
+  dplyr::select(-Common.Name, -Annotation) %>% 
+  dplyr::rename(target = Name)
+```
+
+Now, let's create a "long" version of the data frame, which will be convenient for filtering and exploration:
+
+```{r}
+lee.tfs.long <- lee.tfs %>% 
+  tidyr::gather(TF, pvalue, -target) %>% # cast to long format
+  dplyr::select(TF, target, pvalue) # reorder columns
+```
+
+Let's see what our long format data frame looks like:
+
+```{r}
+head(lee.tfs.long)
+```
+
+## Finding targets of a given TF
+
+* How you would find all the targets of a given TF?  Let's look at the data for one TF.
+
+```{r}
+lee.tfs.long %>% 
+  filter(TF == "MATA1") %>%
+  head()
+```
+
+We want to filter out all edges below a certain p-value (Lee et al. used p = 0.001 as cutoff) as well as "NA" entries. Adding an additional predicate to our `filter` call will take care of this:
+
+```{r,results="hide"}
+MATA1.bound <- 
+  lee.tfs.long %>% 
+  filter(TF == "MATA1" & pvalue < 0.001)
+
+MATA1.bound
+```
+
+
+If we wanted the targets as strings
+```{r}
+as.character(MATA1.bound$target)
+```
+
+# Reduced data frame
+
+Let's consider only those TF-gene interactions with p-values less than 0.001
+
+```{r}
+lee.trimmed <- filter(lee.tfs.long, pvalue < 0.001)
+```
+
+We've already seen how to get all the genes whose promoter regions are bound by a particular transcription fact:
+
+```{r}
+# find all the genes bound by RIM101
+lee.trimmed %>% filter(TF == "RIM101")
+```
+
+You can similarly use a filter to find all the TFs that bind to the promoter of a particular gene:
+
+```{r}
+# find all the TFs that bind YAL022C
+lee.trimmed %>% filter(target =="YAL022C")
+```
+
+# Creating a histogram showing the number of genes bound
+
+Find the number of genes bound per TF
+```{r}
+hits.per.tf <- lee.trimmed %>% 
+               group_by(TF) %>% 
+               summarise(ngenes = length(target))
+
+hits.per.tf
+```
+
+
+
+
+```{r}
+qplot(hits.per.tf$ngenes, breaks=seq(0,300,20), geom = "histogram",
+     xlab="Number of Promoter Regions Bound", 
+     ylab="Number of Regulators", 
+     main="Distribution of number of targets per TF")
+```
+
+What is the distribution of the number of TFs that each gene is regulated by?
+
+```{r}
+tfs.per.gene <- lee.trimmed %>% 
+                group_by(target) %>% 
+                summarise(ntfs = length(TF))
+
+
+ggplot(tfs.per.gene, aes(x = ntfs)) + 
+  geom_histogram(binwidth = 1) +
+  labs(x = "Number of TFs", y = "Number of Genes", 
+       title = "Distribution of number of TFs per gene")
+```
+
+
+
+
+## Install some new packages
+
+
+* Install igraph
+
+```{r, eval=FALSE}
+install.packages("igraph", dependencies = TRUE)
+```
+
+
+```{r}
+library(igraph)
+```
+
+
+## Creating a graph from a data frame
+
+
+
+```{r}
+lee.graph <- graph_from_data_frame(lee.trimmed)
+```
+
+`igraph::vcount` gives the  number of vertices in the graph:
+```{r}
+vcount(lee.graph)
+```
+
+`igraph::ecount` gives the number of edges
+```{r}
+ecount(lee.graph)
+```
+
+
+`igraph::V` returns the vertices of the graph:
+
+```{r}
+V(lee.graph)
+```
+
+`igraph::E` gives the edges:
+
+```{r}
+E(lee.graph)
+```
+
+## Specify bipartite structure of graph
+
+Our network has two classes of nodes -- transcription factors (TFs) and the genes they regulate.  In our current representation edges are only between TFs and genes, never directly between TFs or between genes.  A network of this type is called a "bipartite graph".
+
+To tell `igraph` functions that we're working with a bipartite graph, we need to set the `type` attribute of each vertex.  We'll use TRUE to indicate a vertex is a transcription factor, and FALSE to indicate a vertex is a gene.
+
+```{r}
+tfs <- unique(lee.trimmed$TF)  # get vector of TF neames
+
+# for each vertex in the graph, set it's type to TRUE or FALSE
+# depending on whether the vertex represents a TF or a gene
+V(lee.graph)$type <- V(lee.graph)$name %in% tfs
+```
+
+For the purpose of making nice figures, we'll also set some shape and color attributes for each vertex based on the `type` attribute.  We'll use pinkish-red circles to represent TFs and blue square to represent genes.
+
+```{r}
+V(lee.graph)$shape  <- c("square", "circle")[V(lee.graph)$type+1]
+V(lee.graph)$color  <- c("steelblue", "lightcoral")[V(lee.graph)$type+1]
+```
+
+
+## Vertex degree
+
+Get degree of particular vertices:
+```{r}
+degree(lee.graph, "MATA1")
+degree(lee.graph, "STE12")
+```
+
+`degree` can take more than one vertex name
+
+```{r}
+degree(lee.graph, c("STE12", "DIG1"))
+```
+
+TF degree sorted from largest to smallest:
+```{r}
+sort(degree(lee.graph, tfs), decreasing = TRUE)
+```
+
+## Connected components
+
+How many connected components (disconnected subgraphs) are there?
+```{r}
+count_components(lee.graph)
+```
+
+Get connected components:
+```{r}
+lee.components <- decompose(lee.graph)
+```
+
+Get vertex count in each component:
+```{r}
+lapply(lee.components, vcount)
+```
+
+Get edge count in each component:
+```{r}
+lapply(lee.components, ecount)
+```
+
+Let's plot the two smallest components:
+```{r}
+plot(lee.components[[2]], 
+     layout = layout.bipartite,
+     vertex.label.cex=0.65,
+     vertex.label.degree=0, vertex.label.dist=1.5)
+```
+
+```{r}
+plot(lee.components[[3]], 
+     layout = layout.bipartite,
+     vertex.label.cex=0.65,
+     vertex.label.degree=-90, vertex.label.dist=1)
+```
+
+We can use a short function from the igraph mailing list to find the largest connected component (https://lists.nongnu.org/archive/html/igraph-help/2009-08/msg00064.html)
+```{r}
+giant.component <- function(g, ...) {
+  cl <- clusters(g, ...)
+  induced_subgraph(g,  which(cl$membership == which.max(cl$csize)))
+}
+```
+
+```{r}
+big.cc <- giant.component(lee.graph)
+```
+
+## Finding neighbors of a vertex
+
+To find all the out-neighbors (targets) of a given TF:
+
+```{r}
+neighbors(lee.graph, "DIG1")
+```
+
+To find all the targets in common between two TFs:
+
+```{r}
+intersection(neighbors(lee.graph, "DIG1"), neighbors(lee.graph, "STE12"))
+```
+
+Let's write a function to calculate common targets between pair of TFs:
+
+```{r}
+targets.in.common <- function(g, name1, name2){
+  targets1 <- neighbors(g, name1)
+  targets2 <- neighbors(g, name2)
+  common.targets <- intersection(targets1, targets2)
+  return(common.targets)
+}
+```
+
+You can then use this function as so:
+
+```{r}
+targets.in.common(lee.graph, "ABF1", "FKH1")
+```
+
+
+
+## Creating a TF-TF network based on shared targets
+
+
+For bipartite graphs, $G$, where the vertex set $V$ has two subsets, $X$ and $Y$, we can define an operation called the "bipartite projection".  The bipartite projection with respect to $X$ creates a new graph, $G_X$ where $(x_i,x_j)$ is an edge if $x_i$ and $x_j$ had at least one target node, $y_i$ in common in $G$.  The bipartite projection with respect to $Y$ is similarly defeined.
+
+igraph defines a `bipartite.projection` function to compute the bipartite projection. Given a bipartite graph, `bipartite.projection` returns a list with two graphs, `proj1` and `proj2` representing the projections of the two different classes of vertices. The edges of these graphs have a `weight` attribute giving the number of target nodes in common.  
+
+We will use the bipartite projection to build two complementary network representations -- 1) a network representing TFs that regulate similar sets of genes; and 2) a network representing genes that are regulated by similar sets of TFs.
+
+```{r}
+lee.projection <- bipartite.projection(lee.graph)
+gene.proj <- lee.projection[[1]]
+tf.proj <- lee.projection[[2]]
+```
+
+
+Now plot the graph
+```{r}
+V(tf.proj)$size <-sqrt(degree(tf.proj))
+E(tf.proj)$width <- sqrt(E(tf.proj)$weight)
+
+l <- layout_with_fr(tf.proj, weights=E(tf.proj)$weight)
+plot(tf.proj, vertex.label=NA, layout=l)
+```
+
+That's pretty dense as there's lots of edges. Let's prune some edges.  We'll create a new graph where we delete any edges with weights less than 10, meaning edges now indicate that a pair of TFs shares at least 10 target genes in common.
+
+```{r}
+tf.shared.cut <- delete.edges(tf.proj, E(tf.proj)[weight < 10])
+plot(tf.shared.cut, vertex.label.cex=0.5, vertex.label.dist=0.5 )
+```
+
+
+Now we can use this as so
+```{r}
+big.TF.TF <- giant.component(tf.shared.cut)
+E(big.TF.TF)$width <- sqrt(E(big.TF.TF)$weight)
+
+l <- layout.fruchterman.reingold(big.TF.TF, 
+                                 weights=E(big.TF.TF)$weight)
+
+plot(big.TF.TF, vertex.label.cex=0.65, vertex.label.dist=0.5,
+     layout=l)
+```
+
+
+## Plotting networks using ggraph
+
+There's a new R library for generating network figures called `ggraph`.  ggraph provides more powerful network plotting capabilities, and shares a similar structure to ggplot2 (upon which it is based).
+
+
+
+* Install ggraph package
+
+```{r, eval=FALSE}
+install.packages("ggraph", dependencies = TRUE)
+```
+
+Once installed, load ggraph:
+```{r}
+library(ggraph)
+```
+
+Let's plot the largest connected component of our TF-TF graph, using ggraph:
+
+```{r}
+ggraph(big.TF.TF, layout = "kk") + 
+  geom_node_text(aes(label=name)) + 
+  geom_edge_link()
+```
+
+We can get even fancier by changing some aspects of the plotting.  Here for example we are making some changes in the aesthetic of `geom_edge_link` to prevent the edges from being drawn on top of the labels. The call to `theme_graph` get's rid of the typical background ggplot elements (grid, color).
+
+```{r}
+ggraph(big.TF.TF, layout = "kk") + 
+  geom_node_text(aes(label=name)) + 
+  geom_edge_link(aes(start_cap = label_rect(node1.name),
+                     end_cap = label_rect(node2.name))) +
+  theme_graph()
+```
+
+
+See the [ggraph github site](https://github.com/thomasp85/ggraph) and associated links for a more thorough introduction to using ggraph.
+
+
+
+
+# More network analysis resources for R
+
+There's an excellent tutorial on [Network Visualization in R](https://rpubs.com/kateto/netviz) (primarily based on igraph). Check it out for more ideas.
+
+Once you've generated a network you might consider using another program to visualize the network.
+
+[Pajek](http://mrvar.fdv.uni-lj.si/pajek/) is a popular windows program for network visualization (igraph can produce a Pajek formatted representation of a graph).
+
+
