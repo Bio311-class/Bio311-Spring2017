@@ -109,7 +109,7 @@ If we wanted the targets as strings
 as.character(MATA1.bound$target)
 ```
 
-# Reduced data frame
+## Reduced data frame
 
 Let's consider only those TF-gene interactions with p-values less than 0.001
 
@@ -131,7 +131,7 @@ You can similarly use a filter to find all the TFs that bind to the promoter of 
 lee.trimmed %>% filter(target =="YAL022C")
 ```
 
-# Creating a histogram showing the number of genes bound
+## Creating a histogram showing the number of genes bound
 
 Find the number of genes bound per TF
 ```{r}
@@ -415,17 +415,44 @@ We can get even fancier by changing some aspects of the plotting.  Here for exam
 ggraph(big.TF.TF, layout = "kk") + 
   geom_node_text(aes(label=name)) + 
   geom_edge_link(aes(start_cap = label_rect(node1.name),
-                     end_cap = label_rect(node2.name))) +
+                     end_cap = label_rect(node2.name),
+                     edge_alpha = 0.5)) +
   theme_graph()
 ```
 
 
 See the [ggraph github site](https://github.com/thomasp85/ggraph) and associated links for a more thorough introduction to using ggraph.
 
+## Building a directed TF-TF network
+
+```{r}
+all.tfs <- unique(lee.tfs.long$TF)
+
+tfs.only.wide <- filter(lee, Common.Name %in% all.tfs) %>% select(-Annotation,-Name)
+
+tfs.only.long <- tfs.only.wide %>% 
+                 gather(TF, pvalue, -Common.Name )%>%
+                 select(TF, Common.Name, pvalue) %>%
+                 rename(target = Common.Name)
+```
+
+Now filter TF-TF network
+```{r}
+tfs.only.filtered <- tfs.only.long %>% 
+                     filter(pvalue < 0.001)
+
+tfs.only.graph <- graph_from_data_frame(tfs.only.filtered, directed = TRUE)
+```
+
+```{r, fig.width=6, fig.height=6}
+l <- layout.circle(tfs.only.graph)
+
+plot(tfs.only.graph, edge.arrow.size=.4, vertex.shape="none", vertex.label.cex=0.5, edge.curved=0.1, vertex.label.font=2, vertex.label.color="gray40", edge.color="gray85", layout=l)
 
 
+```
 
-# More network analysis resources for R
+## More network analysis resources for R
 
 There's an excellent tutorial on [Network Visualization in R](https://rpubs.com/kateto/netviz) (primarily based on igraph). Check it out for more ideas.
 
