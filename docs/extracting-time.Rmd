@@ -1,0 +1,114 @@
+---
+title: "Extracting useful information from column labels"
+author: "Paul M. Magwene"
+date: "April 11, 2017"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    theme: readable
+    highlight: default  
+    fig_width: 6
+    fig_height: 6
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, prompt = FALSE, eval = TRUE, 
+                      comment=NA, warning = FALSE, results="show",
+                      message = FALSE, cache = TRUE)
+```
+
+## Goal
+
+Sometimes important experimental information is included in the column header information of a spreadsheet. A common task is to extract this information so we can compute with it.  In this document I'll show you how to do this for one of the gene expression data sets.
+
+## Libraries
+
+```{r}
+library(magrittr)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+```
+
+
+## Load and restructure the data
+
+Read data from the causton heat expression data set. See groups 4 and 9 data/focal papers for the source of this data.
+
+```{r}
+causton <- read.csv("causton-2001-heat-expression.csv")
+```
+
+Now take a look at data. 
+
+```{r}
+# the call to options is to get a little wider text display in knitr output
+options(width=100)
+head(causton)
+```
+
+You'll see that each row represents a gene.  The first two columns give the systematic name (ORF) and the common name (Gene), and the subsequent columns correspond to time points.  
+
+The time points are of the form `Heat.15.`, `Heat.30.`, etc. The periods result from R replacing characters that aren't allowed in variable names (spaces, apostrophes, etc). Notice that the first two time points are a little different -- they read `Heat.0...A.` and `Heat.0...B.`  -- representing replicate experiments at time zero.
+
+What we're going to do is parse these time point related column headers into three parts -- experiment, time, and replicate.  Only the time point zero data has replicates, but we'll create a variable to represent this for all the data.
+
+## Reshape data into long format
+
+First, let's reshape the data into a "long" format as so:
+
+```{r}
+causton.long <- 
+  causton %>%
+  gather(time, expression, -ORF, -Gene) %>%
+  arrange(ORF)  # sort by ORF
+```
+
+Here's what the data looks like now:
+
+```{r}
+head(causton.long)
+```
+
+## Splitting the time column into three new columns
+
+We want to extract the time information from each string in the time variable. We're going to use a regular expression (regex) to do so efficiently and succinctly.  For a short tutorial on regular expression in R see: http://stat545.com/block022_regular-expression.html
+
+The `tidyr` package provides a function called `extract` that allow us to extract one column into multiple columns using regular expressions.
+
+```{r}
+causton.long2 <-
+  causton.long %>%
+  extract(time,                            # column we're extracting from
+          c("expt", "time", "replicate"),  # new columns we're creating
+          regex="([[:alpha:]]+)\\.([[:digit:]]+)\\.+([[:alnum:]]*)", # regex 
+          convert = TRUE)                  # automatically convert column types
+```
+
+The regex finds one or more alphabetic characters (`([[:alpha:]]+)` = experiment type), followed by a period (`\\.`), followed by one or more numbers (`([[:digit:]]+)` = time point), followed by one or more periods, followed by zero or more alpha-numeric characters (`([[:alnum:]]*)`= replicate information). For each of the parts surrounded by parentheses (capture groups), will be put into a different column (one of "expt", "time", or "replicate"). 
+
+Let's take a look at the newly restructured data frame:
+```{r}
+head(causton.long2)
+```
+
+## Averaging replicates
+
+Let's carry out one final step. Since we only had replicate measurements for time point zero, let's replace the two different measurements by their average.  We can use `group_by` and `summarize` to do this as follows:
+
+```{r}
+causton.long.avg <-
+  causton.long2 %>%
+  group_by(ORF, Gene, expt, time) %>%
+  summarize(expression = mean(expression)) 
+```
+
+In the `group_by` statement we left out `replicate` because this is the variable across which we were averaging.
+
+Our final data frame looks like this:
+
+```{r}
+head(causton.long.avg)
+```
