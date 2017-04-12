@@ -1,0 +1,137 @@
+---
+title: "Yeast Genome Features"
+author: "Paul M. Magwene"
+date: "April 12, 2017"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    theme: readable
+    highlight: default  
+    fig_width: 6
+    fig_height: 6
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, prompt = FALSE, eval = TRUE, 
+                      comment=NA, warning = FALSE, results="show",
+                      message = FALSE, cache = FALSE)
+```
+
+
+## Goal
+
+Here I'm going to illustrate one way to map back and forth between systematic names (e.g. "YMR037C") and gene names (e.g. "MSN2") for yeast genome data.
+
+I've posted a file to the course wiki called `SGD_features.tab`.  This file contains information on all the annotated features (genes and other genomic elements) that are currently documented for the *Saccharomyces cerevisiae* genome.  I downloaded this file from the Saccharomyces Genome Database (http://yeastgenome.org).
+
+Columns within `SGD_features.tab` are:
+
+1.   Primary SGDID (mandatory)
+2.   Feature type (mandatory)
+3.   Feature qualifier (optional)
+4.   Feature name (optional)
+5.   Standard gene name (optional)
+6.   Alias (optional, multiples separated by |)
+7.   Parent feature name (optional)
+8.   Secondary SGDID (optional, multiples separated by |)
+9.   Chromosome (optional)
+10.  Start_coordinate (optional)
+11.  Stop_coordinate (optional)
+12.  Strand (optional)
+13.  Genetic position (optional)
+14.  Coordinate version (optional)
+15.  Sequence version (optional)
+16.  Description (optional)
+
+
+See the [SGD Features README](http://downloads.yeastgenome.org/curation/chromosomal_feature/SGD_features.README) for more details.
+
+## Libraries
+
+```{r}
+library(magrittr)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+```
+
+## Read the file
+
+`SGD_features.tab` is a tab delimited file with sixteen columns (see column descriptions above).  We'll use the `read.delim` function as shown below to read this file into a data frame:
+
+```{r}
+cnames <- c("SGDID", "ftr.type", "ftr.qualifier", "ftr.name",
+            "std.name", "alias", "parent.name", "secondary.id",
+            "chrom", "start", "stop", "strand",
+            "genetic.pos", "coord.vers", "sequence.vers", "description")
+
+sgd <- read.delim("SGD_features.tab", sep="\t", quote="", header=FALSE,
+                  col.names = cnames, stringsAsFactors = FALSE)
+```
+
+## Filter the features
+
+The `SGD_features.tab` contains information about non-genic features. There are more than 16,000 features listed overall as we can see by examining the number of rows in the data frame
+
+```{r}
+nrow(sgd)
+```
+
+Let's focus our attention on features corresponding to "open reading frames" (ORFs), which are those parts of the genome that are potentially protein coding genes. We will also include "bloacked reading frames" as there are some genes in the reference yeast genome that are truncated, but functional in other strain backgrounds.
+
+```{r}
+orfs <- sgd %>% filter(ftr.type %in% c("ORF", "blocked_reading_frame"))
+nrow(orfs)
+```
+
+After filtering features to only focus on ORFs we're down to about 6600 features. Let's take a look at the first few rows and columns of this reduced data frame:
+
+```{r}
+head(orfs[,1:5])
+```
+
+Notice that the column `ftr.qualifier` contains additional information about the ORFs.  Some ORFs are listed as "Verified", meaning that there is direct experimental evidence that this open reading frame encodes for a functional protein.  Some are listed as "Uncharacterized", meaning that there is no current experimental evidence bearing on this ORF. There are also ORFs with the "Dubious" qualifier meaning that there are reasons to believe that this ORF does not actually encode a protein coding gene (e.g. the ORF is too short).  Let's filter out all the dubious ORFs.
+
+```{r}
+good_orfs <- orfs %>% filter(ftr.qualifier != "Dubious")
+nrow(good_orfs)
+```
+
+## Systematic names to gene names
+
+With a data frame in hand, it's relatively straightforward to go systematic names to gene names, as illustrated below:
+
+```{r}
+ good_orfs %>% filter(ftr.name == "YMR037C") %$% std.name
+```
+If I had a list of feature names of interest, such as derived from a cluster analysis, and I wanted to build a small table giving all the gene names plus the data from the `description` column I could do something like this:
+
+```{r}
+genes.of.interest <- c("YJL005W", "YJL164C", "YPL203W", "YKL166C",
+                       "YIL033C", "YGL248W", "YOR360C", "YNL098C")
+
+gene.table <-
+  good_orfs %>%
+  filter(ftr.name %in% genes.of.interest) %>%
+  select(ftr.name, std.name, description)
+```
+
+To produce nice output of this table we can use  the `kable` function defined in the knitr package, which will produce nicely formatted html output for our markdown document:
+
+```{r}
+library(knitr)
+kable(gene.table)
+```
+
+For even more formatting flexibility, consuder using the  [xtable package](https://cran.r-project.org/web/packages/xtable/index.html).
+
+## Gene names to systematic names
+
+You can similarly go from gene names to systematic names. This would be useful for example if you wanted to go from transcription factor names to the standard names of the genes that encode them.
+
+```{r}
+good_orfs %>%
+  filter(std.name %in% c("MSN2", "MSN4", "FLO8")) %>%
+  select(ftr.name, std.name)
+```
